@@ -1,12 +1,11 @@
 const pup = require('puppeteer');
 
-const url = "https://fbref.com/pt/comps/9/cronograma/Premier-League-Resultados-e-Calendarios";
-
-let c = 1;
-const list = [];
-const linksList = [];
-
 async function getInfo(){
+    const url = "https://fbref.com/pt/comps/9/cronograma/Premier-League-Resultados-e-Calendarios";
+
+    const matchList = [];
+    const linksList = [];
+
     const browser = await pup.launch({headless: true});
     const page = await browser.newPage();
     
@@ -14,6 +13,7 @@ async function getInfo(){
 
     const tableSelectors = await page.evaluate(()=>{
         const rows = document.querySelectorAll("#sched_2022-2023_9_1 tr");
+
         return Array.from(rows, row=>{
             const collumns = row.querySelectorAll('td');            
             return Array.from(collumns, collumn => collumn.innerHTML);
@@ -30,34 +30,56 @@ async function getInfo(){
             }
         }       
     })
-
-    for(const links of linksList){        
+    let id = 0;
+    for(const links of linksList){       
+        if(id == 1) continue; 
         await page.goto(links);
         await page.waitForSelector('#team_stats_extra');
-        const objList = [];
+
         const teamStats = await page.$$eval('#team_stats_extra > div ' , el=> el.map(team => team.innerText));   
 
-        const props = Object.keys(teamStats);
+        const matchStringJoin = [teamStats[0], teamStats[1],teamStats[2]].join('\n');        
+        const matchString = matchStringJoin.split("\n");
+                
+        const match = {
+            id: id,
+            teamA:{
+                name:matchString[0],
+                fouls: matchString[3],
+                cornerKick: matchString[6],
+                crossing:  matchString[9],
+                disarm: matchString[15],
+                offside: matchString[27],
+                goalKick: matchString[30], 
+                sideKick: matchString[33],
 
-        const splitString = teamStats[0].split("\n");
-        const teamA = splitString[0];
-        const teamB = splitString[2];
-        // console.log(split);
-        const obj = {teamA,teamB};
-        console.log(obj);
-        // await page.waitForTimeout(500000);
+            },
+            teamB:{
+                name:matchString[2],      
+                fouls: matchString[5],
+                cornerKick: matchString[8],
+                crossing:  matchString[11],
+                disarm: matchString[17],
+                offside: matchString[29],
+                goalKick: matchString[32], 
+                sideKick: matchString[35],          
+            },
+        }  
         
-        // await page.waitForSelector('.team_stats_extra');
-        
-        
-        // const teamB = await page.$eval();
+        matchList.push(match);
+        id ++;                
     }
 
-    console.log(linksList);
-
-    // await page.waitForTimeout(500000);
     await browser.close();
 
+    return matchList;    
 }
 
-getInfo();
+(async ()=>{
+    const temp = await getInfo();   
+    console.log(temp);     
+})();
+
+// getInfo(); 
+
+
